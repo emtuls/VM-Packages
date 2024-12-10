@@ -2,7 +2,9 @@ name: Generate Package Wiki
 
 on:
   schedule:
-    - cron: '0 12 * * *'  # Run daily at 12:00 PM UTC
+    # Runs daily at a weird time (02:50 UTC) to avoid delays during periods of
+    # high loads of GitHub Actions workflow runs.
+    - cron: '50 2 * * *'  
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
@@ -12,8 +14,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Chocolatey
-        run: choco install chocolatey -y
+      - name: Checkout Wiki Repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.REPO_TOKEN }}
+          fetch-depth: 0
 
       - name: Generate Wiki Content
         id: generate-content
@@ -44,20 +51,22 @@ jobs:
               $packagesByCategory[$category] = ""
             }
 
-
             try {
-              $descriptionResult = choco info $package -s $source | Select-String -Pattern "Description:\s*(.+)"
-              if ($descriptionResult) {
-                $description = $descriptionResult.Matches.Groups[1].Value.Trim()
+              $nuspecFile = "$packagesDir\$package\$package.nuspec"
+              if (Test-Path $nuspecFile) {
+                $xml = [xml](Get-Content $nuspecFile)
+                $description = $xml.package.metadata.description
               } else {
-                $description = "Description not found." 
+                $description = "Nuspec file not found."
+              }
+              if (-not $description) {
+                  $description = "Description not found in .nuspec."
               }
             }
             catch {
               Write-Warning "Error getting description for $($package): $_"
-              $description = "Error retrieving description." 
+              $description = "Error retrieving description."
             }
-
 
             $packagesByCategory[$category] += "| $package | $description |`n"
           }
@@ -80,21 +89,14 @@ jobs:
             $wikiContent += $packagesByCategory["Not Categorized"] + "`n`n"
           }
 
-          Write-Output "::set-output name=wiki_content::$wikiContent"
+          # Write the wiki content to a file
+          $wikiContent | Out-File -FilePath "wiki/Packages.md" -Encoding UTF8
 
-      - name: Update Wiki Page
-        uses: octokit/request-action@v2.x
-        with:
-          route: PUT /repos/${{ github.repository }}/contents/Packages.md
-          mediaType: |
-            {
-              "previews": [
-                "luke-cage"
-              ]
-            }
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        data:
-          message: "Update Package Wiki"
-          content: ${{ steps.generate-content.outputs.wiki_content | btoa }}
-          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Commit changes
+        working-directory: wiki
+        run: |
+          git config user.email 'vm-packages@google.com'
+          git config user.name 'vm-packages'
+          git add .
+          git commit -am "Update Package Wiki"
+          git push
