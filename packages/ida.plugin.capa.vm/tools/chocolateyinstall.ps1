@@ -7,15 +7,15 @@ try {
 
     # Install plugin
     $pluginName = "capa_explorer.py"
-    $pluginUrl = "https://raw.githubusercontent.com/mandiant/capa/v7.0.1/capa/ida/plugin/capa_explorer.py"
+    $pluginUrl = "https://raw.githubusercontent.com/mandiant/capa/v8.0.0/capa/ida/plugin/capa_explorer.py"
     $pluginSha256 = "a9a60d9066c170c4e18366eb442f215009433bcfe277d3c6d0c4c9860824a7d3"
     VM-Install-IDA-Plugin -pluginName $pluginName -pluginUrl $pluginUrl -pluginSha256 $pluginSha256
 
 
     # Download capa rules
     $pluginsDir = VM-Get-IDA-Plugins-Dir
-    $rulesUrl = "https://github.com/mandiant/capa-rules/archive/refs/tags/v7.0.1.zip"
-    $rulesSha256 = "f4ed60bcf342007935215ea76175dddfbcbfb3f97d95387543858e0c1ecf8bcd"
+    $rulesUrl = "https://github.com/mandiant/capa-rules/archive/refs/tags/v8.0.0.zip"
+    $rulesSha256 = "1ae71dfe99c9a0faee980e512de839d388a2f6717f7f5898966818790a449411"
     $packageArgs = @{
         packageName    = ${Env:ChocolateyPackageName}
         unzipLocation  = $pluginsDir
@@ -24,7 +24,7 @@ try {
         checksumType   = 'sha256'
     }
     Install-ChocolateyZipPackage @packageArgs
-    $rulesDir = Join-Path $pluginsDir "capa-rules-7.0.1" -Resolve
+    $rulesDir = Join-Path $pluginsDir "capa-rules-8.0.0" -Resolve
 
     # Set capa rules in the capa plugin
     $registryPath = 'HKCU:\SOFTWARE\IDAPython\IDA-Settings\capa'
